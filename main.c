@@ -17,17 +17,20 @@ static const char *vertex_shader_text =
     "#version 400\n"
     "in vec3 vPos;\n"
     "uniform mat4 MVP;\n"
+    "out vec2 col;\n"
     "void main()\n"
     "{\n"
     "    gl_Position = MVP * vec4(vPos, 1.0);\n"
+    "    col = (gl_Position.xy+1)/2;\n"
     "}\n";
 
 static const char *fragment_shader_text =
     "#version 400\n"
+    "in vec2 col;\n"
     "out vec4 frag_colour;\n"
     "void main()\n"
     "{\n"
-    "    frag_colour = vec4(0.5, 0.0, 0.0, 1.0);\n"
+    "    frag_colour = vec4(col.x,col.y,0.5,1.0);\n"
     "}\n";
 
 void die(const char *msg) {
@@ -46,9 +49,9 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action,
 }
 
 float dests[3][2] = {
-    {-0.5f, 0.0f},
-    {0.0f, 0.866f},
-    {0.5f, 0.0f}
+    {-0.9f, -0.7794f},
+    { 0.0f,  0.7794f},
+    { 0.9f, -0.7794f}
 };
 
 void get_next(float* cur){
@@ -123,13 +126,14 @@ int main(void) {
   glLinkProgram(program);
 
   mvp_location = glGetUniformLocation(program, "MVP");
+  glClearColor(0.1,0.1,0.11,0);
 
 
   while (!glfwWindowShouldClose(window)) {
     float ratio;
     int width, height;
     mat4x4 m, p, mvp;
-    vec2 last_point = {0.5, 0.0};
+    vec2 last_point = {0.0, -0.7794};
     int amount = glfwGetTime()*100;
 
     glfwGetFramebufferSize(window, &width, &height);
@@ -145,7 +149,7 @@ int main(void) {
 
     srand(42);
     while(amount--){
-        mat4x4_translate(m, last_point[0], last_point[1]-0.433, 0);
+        mat4x4_translate(m, last_point[0], last_point[1], 0);
         mat4x4_scale_aniso(m, m, tri_scale, tri_scale, tri_scale);
         mat4x4_mul(mvp, p, m);
 
@@ -163,4 +167,3 @@ int main(void) {
   glfwTerminate();
   exit(EXIT_SUCCESS);
 }
-
