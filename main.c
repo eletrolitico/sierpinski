@@ -7,11 +7,11 @@
 
 #include "linmath.h"
 
-float points[] = {
-    0.0f, 0.0f, 0.0f,
-    0.5f, 0.866f, 0.0f, 
-    1.0f, 0.0f, 0.0f
-};
+mat4x4 mvp;
+GLint mvp_location;
+static float tri_scale = 0.003;
+
+float points[] = {0.0f, 0.0f, 0.0f, 0.5f, 0.866f, 0.0f, 1.0f, 0.0f, 0.0f};
 
 static const char *vertex_shader_text =
     "#version 400\n"
@@ -48,34 +48,37 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action,
     glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
-float dests[3][2] = {
-    {-0.9f, -0.7794f},
-    { 0.0f,  0.7794f},
-    { 0.9f, -0.7794f}
-};
+float dests[3][2] = {{-0.9f, -0.7794f}, {0.0f, 0.7794f}, {0.9f, -0.7794f}};
 
-void get_next(float* cur){
-    int dest = rand()%3;
-    cur[0] = (dests[dest][0]+cur[0])/2;
-    cur[1] = (dests[dest][1]+cur[1])/2;
+void get_next(float *cur) {
+  int dest = rand() % 3;
+  cur[0] = (dests[dest][0] + cur[0]) / 2;
+  cur[1] = (dests[dest][1] + cur[1]) / 2;
 }
 
-static float tri_scale = 0.005;
+void draw_point(float *point, mat4x4 p) {
+  mat4x4 m;
+  mat4x4_translate(m, point[0], point[1], 0);
+  mat4x4_scale_aniso(m, m, tri_scale, tri_scale, tri_scale);
+  mat4x4_mul(mvp, p, m);
+
+  glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat *)mvp);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+}
 
 int main(void) {
   GLFWwindow *window;
   GLuint vbo, vao, vertex_shader, fragment_shader, program;
-  GLint mvp_location;
 
   glfwSetErrorCallback(error_callback);
 
   if (!glfwInit())
     die("glfw init");
 
-  // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-  // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-  // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   window = glfwCreateWindow(1280, 720, "Sierpinski", NULL, NULL);
   if (!window) {
@@ -126,15 +129,34 @@ int main(void) {
   glLinkProgram(program);
 
   mvp_location = glGetUniformLocation(program, "MVP");
-  glClearColor(0.1,0.1,0.11,0);
+  mat4x4_identity(mvp);
+  glClearColor(0.1, 0.1, 0.11, 0);
 
+  double last_time = 0, last_fps_display = 0;
+  double now;
+  int fps = 0;
 
   while (!glfwWindowShouldClose(window)) {
     float ratio;
     int width, height;
-    mat4x4 m, p, mvp;
+    mat4x4 p;
     vec2 last_point = {0.0, -0.7794};
-    int amount = glfwGetTime()*100;
+
+    now = glfwGetTime();
+    int amount = now * 1000;
+    if (!fps)
+      fps = 1 / (now - last_time);
+    else
+      fps = (fps + 1 / (now - last_time)) / 2;
+
+    last_time = now;
+
+    if (now - last_fps_display > 1) {
+      char buf[20];
+      sprintf(buf, "Sierpinski - %d fps", fps);
+      glfwSetWindowTitle(window, buf);
+      last_fps_display = now;
+    }
 
     glfwGetFramebufferSize(window, &width, &height);
     ratio = width / (float)height;
@@ -144,18 +166,15 @@ int main(void) {
     glUseProgram(program);
     glBindVertexArray(vao);
 
-    mat4x4_identity(mvp);
     mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
 
+    draw_point(dests[0], p);
+    draw_point(dests[1], p);
+    draw_point(dests[2], p);
     srand(42);
-    while(amount--){
-        mat4x4_translate(m, last_point[0], last_point[1], 0);
-        mat4x4_scale_aniso(m, m, tri_scale, tri_scale, tri_scale);
-        mat4x4_mul(mvp, p, m);
-
-        glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat *)mvp);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        get_next(last_point);
+    while (amount--) {
+      draw_point(last_point, p);
+      get_next(last_point);
     }
 
     glfwSwapBuffers(window);
