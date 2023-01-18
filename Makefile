@@ -4,5 +4,6 @@ else
   LDFLAGS = -lglfw -lGLEW -lGL
 endif
 
-all: main.c linmath.h
+all: main.c main2.c linmath.h
 	gcc -o sierpinski -Wall main.c $(LDFLAGS)
+	gcc -o sierpinski2 -Wall main2.c $(LDFLAGS)
