@@ -9,6 +9,7 @@
 
 mat4x4 mvp;
 GLint mvp_loc;
+int max_level=0;
 
 // pontos para representar um triangulo equilátero
 float points[] = {0.0f, 0.0f, 0.0f, 0.5f, 0.866f, 0.0f, 1.0f, 0.0f, 0.0f};
@@ -47,10 +48,13 @@ static void error_callback(int error, const char *description) {
   fprintf(stderr, "Error: %s\n", description);
 }
 
-static void key_callback(GLFWwindow *window, int key, int scancode, int action,
-                         int mods) {
+static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, GLFW_TRUE);
+  if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+    max_level++;
+  if (key == GLFW_KEY_DOWN && action == GLFW_PRESS && max_level)
+    max_level--;
 }
 
 GLuint create_shader(const char *const *src, GLuint type) {
@@ -83,6 +87,19 @@ void draw_tri(float x, float y, mat4x4 p, double scale) {
 
   glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, (const GLfloat *)mvp);
   glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void recurse_tri(double x, double y, mat4x4 p, double scale, int level) {
+  draw_tri(x, y, p, scale);
+
+  if(!level--)
+    return;
+
+  scale /= 2;
+
+  recurse_tri(x-scale/2,       y+scale*0.866, p, scale, level);// left
+  recurse_tri(x+scale/2,       y-scale*0.866, p, scale, level);// top
+  recurse_tri(x+scale/2+scale, y+scale*0.866, p, scale, level);// right
 }
 
 int main(void) {
@@ -162,7 +179,7 @@ int main(void) {
 
     glUniform1i(blk_loc, 1);
     mat4x4_ortho(p, -ratio, ratio, 1.f, -1.f, 1.f, -1.f);
-    draw_tri(-0.5, 0, p, 1);
+    recurse_tri(-0.5, 0, p, 1, max_level);
 
     glUniform1i(blk_loc, 0);
     mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
