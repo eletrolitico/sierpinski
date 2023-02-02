@@ -90,10 +90,10 @@ void draw_tri(float x, float y, mat4x4 p, double scale) {
 }
 
 void recurse_tri(double x, double y, mat4x4 p, double scale, int level) {
-  draw_tri(x, y, p, scale);
-
   if(!level--)
     return;
+
+  draw_tri(x, y, p, scale);
 
   scale /= 2;
 
